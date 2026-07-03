@@ -102,6 +102,93 @@ fun CanvasScreen(
             modifier = Modifier.fillMaxSize()
         )
 
+        // 2. Floating Header Bar (Back navigation + Undo/Redo + Auto Layout)
+        Surface(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .statusBarsPadding()
+                .padding(horizontal = 16.dp, vertical = 10.dp)
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp))
+                .border(
+                    width = 1.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                    shape = RoundedCornerShape(20.dp)
+                ),
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+            tonalElevation = 6.dp
+        ) {
+            Row(
+                modifier = Modifier
+                    .padding(horizontal = 10.dp, vertical = 6.dp)
+                    .fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                IconButton(
+                    onClick = onNavigateBack,
+                    modifier = Modifier.testTag("back_button")
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "رجوع",
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    IconButton(
+                        onClick = { canvasViewModel.undo() },
+                        enabled = canvasState.canUndo,
+                        modifier = Modifier.testTag("undo_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.RestartAlt,
+                            contentDescription = "تراجع (Undo)",
+                            tint = if (canvasState.canUndo) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                        )
+                    }
+                    IconButton(
+                        onClick = { canvasViewModel.redo() },
+                        enabled = canvasState.canRedo,
+                        modifier = Modifier.testTag("redo_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Cached,
+                            contentDescription = "إعادة (Redo)",
+                            tint = if (canvasState.canRedo) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                        )
+                    }
+                    IconButton(
+                        onClick = { canvasViewModel.triggerAutoLayout() },
+                        modifier = Modifier.testTag("auto_layout_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.AutoAwesome,
+                            contentDescription = "ترتيب تلقائي (Auto Layout)",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            }
+        }
+
+        // 3. Zoom Control Panel (left side, vertically centered)
+        ControlPanel(
+            onZoomIn = { center -> canvasViewModel.zoomIn(center) },
+            onZoomOut = { center -> canvasViewModel.zoomOut(center) },
+            onReset = { canvasViewModel.resetCanvas() },
+            viewportWidth = viewportWidth,
+            viewportHeight = viewportHeight,
+            scale = canvasState.scale,
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .padding(start = 16.dp)
+        )
+
         // 4. Creative Element Toolbox (Floating panel above Coordinates)
         Surface(
             modifier = Modifier
@@ -224,6 +311,15 @@ fun CanvasScreen(
                 }
             }
         }
+
+        // 5. Coordinate Panel (bottom center, very bottom edge)
+        CoordinatePanel(
+            canvasState = canvasState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(bottom = 16.dp)
+        )
 
         // 6. Professional Properties Sidebar (Phase 5)
         PropertiesSidebar(
