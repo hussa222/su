@@ -32,6 +32,8 @@ import androidx.compose.material.icons.filled.Cached
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.VerticalAlignBottom
 import androidx.compose.material.icons.filled.VerticalAlignTop
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.material3.Button
@@ -87,6 +89,7 @@ fun CanvasScreen(
     // Track viewport size to center zoom steps
     var viewportWidth by remember { mutableStateOf(1080f) }
     var viewportHeight by remember { mutableStateOf(1920f) }
+    var panelsVisible by remember { mutableStateOf(true) }
 
     Box(
         modifier = modifier.fillMaxSize()
@@ -103,6 +106,7 @@ fun CanvasScreen(
         )
 
         // 2. Floating Header Bar (Top Bar)
+        if (panelsVisible) {
         Surface(
             modifier = Modifier
                 .statusBarsPadding()
@@ -187,8 +191,10 @@ fun CanvasScreen(
                 }
             }
         }
+        }
 
         // 3. Floating Sidebar Control Panel (Vertical scale adjusting + reset)
+        if (panelsVisible) {
         ControlPanel(
             onZoomIn = { center -> canvasViewModel.zoomIn(center) },
             onZoomOut = { center -> canvasViewModel.zoomOut(center) },
@@ -200,6 +206,7 @@ fun CanvasScreen(
                 .align(Alignment.CenterEnd)
                 .padding(end = 16.dp)
         )
+        }
 
         // 4. Creative Element Toolbox (Floating panel above Coordinates)
         Surface(
@@ -325,6 +332,7 @@ fun CanvasScreen(
         }
 
         // 5. Floating Coordinates Display (Sticky Bottom Panel)
+        if (panelsVisible) {
         CoordinatePanel(
             canvasState = canvasState,
             modifier = Modifier
@@ -332,8 +340,10 @@ fun CanvasScreen(
                 .navigationBarsPadding() // Exclude bottom safe navigation overlays
                 .padding(bottom = 24.dp)
         )
+        }
 
         // Smart Layout Engine - Floating Left-side Console
+        if (panelsVisible) {
         Surface(
             modifier = Modifier
                 .align(Alignment.CenterStart)
@@ -445,6 +455,7 @@ fun CanvasScreen(
                 }
             }
         }
+        }
 
         // 6. Professional Properties Sidebar (Phase 5)
         PropertiesSidebar(
@@ -510,6 +521,7 @@ fun CanvasScreen(
         }
 
         // 8. Validation Status Banner (Under top header)
+        if (panelsVisible) {
         canvasState.validationStatus?.let { status ->
             Box(
                 modifier = Modifier
@@ -549,6 +561,31 @@ fun CanvasScreen(
                     }
                 }
             }
+        }
+        }
+
+        // Toggle button: shows/hides all floating panels above (small arrow, always visible)
+        IconButton(
+            onClick = { panelsVisible = !panelsVisible },
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .statusBarsPadding()
+                .padding(top = 16.dp, start = 16.dp)
+                .size(36.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
+                .border(
+                    width = 1.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                    shape = RoundedCornerShape(10.dp)
+                )
+        ) {
+            Icon(
+                imageVector = if (panelsVisible) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                contentDescription = if (panelsVisible) "إخفاء اللوحات" else "إظهار اللوحات",
+                tint = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.size(20.dp)
+            )
         }
 
         // 9. Safe Deletion Confirmation Dialog (Trunk)
