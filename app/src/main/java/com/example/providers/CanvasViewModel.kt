@@ -7,7 +7,6 @@ import androidx.lifecycle.viewModelScope
 import com.example.models.CanvasElement
 import com.example.models.CanvasState
 import com.example.models.ElementType
-import com.example.models.OverlapMode
 import com.example.models.SnapTarget
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -991,17 +990,11 @@ class CanvasViewModel : ViewModel() {
         return descendants
     }
 
-    /**
-     * Checks if two elements' bounding boxes overlap, with an adjustable margin.
-     * margin > 0  → boxes must be at least `margin` dp apart to NOT count as overlapping (stricter).
-     * margin < 0  → boxes are allowed to overlap by up to |margin| dp before counting (looser).
-     * margin = 0  → boxes must not touch at all (original strict behavior).
-     */
-    fun elementsOverlap(el1: CanvasElement, el2: CanvasElement, margin: Float = 0f): Boolean {
-        val r1Left = el1.position.x - el1.width / 2f - margin
-        val r1Right = el1.position.x + el1.width / 2f + margin
-        val r1Top = el1.position.y - el1.height / 2f - margin
-        val r1Bottom = el1.position.y + el1.height / 2f + margin
+    fun elementsOverlap(el1: CanvasElement, el2: CanvasElement): Boolean {
+        val r1Left = el1.position.x - el1.width / 2f
+        val r1Right = el1.position.x + el1.width / 2f
+        val r1Top = el1.position.y - el1.height / 2f
+        val r1Bottom = el1.position.y + el1.height / 2f
 
         val r2Left = el2.position.x - el2.width / 2f
         val r2Right = el2.position.x + el2.width / 2f
@@ -1011,36 +1004,23 @@ class CanvasViewModel : ViewModel() {
         return !(r1Right < r2Left || r1Left > r2Right || r1Bottom < r2Top || r1Top > r2Bottom)
     }
 
-    /**
-     * Returns the bounding-box margin (in dp) that corresponds to the current overlap mode.
-     * STRONG = elements must stay fully separated (original tight behavior).
-     * LIGHT  = elements are allowed to overlap by 45dp before being pushed apart.
-     * OFF    = overlap prevention is disabled (handled by callers, not via margin).
-     */
-    private fun marginForMode(mode: OverlapMode): Float = when (mode) {
-        OverlapMode.STRONG -> 0f
-        OverlapMode.LIGHT -> -45f
-        OverlapMode.OFF -> 0f
-    }
-
     fun resolveOverlap(element: CanvasElement, allElements: List<CanvasElement>): CanvasElement? {
-        val mode = _state.value.overlapMode
-
-        // Overlap prevention fully disabled: let elements sit wherever they're dropped.
-        if (mode == OverlapMode.OFF) {
-            return element
-        }
-
         var currentElement = element
-        val otherElements = allElements.filter { it.id != element.id }
-        val margin = marginForMode(mode)
-
+        // Direct parent/child pairs are MEANT to sit close together (they're visually
+        // joined by a connecting branch line via anchors), so they must never be treated
+        // as an "overlap" to push apart. Only unrelated elements should repel each other.
+        val otherElements = allElements.filter {
+            it.id != element.id &&
+            it.id != element.parentId &&
+            it.parentId != element.id
+        }
+        
         var attempts = 0
         val maxAttempts = 8
         val offsetStep = Offset(30f, 30f)
-
+        
         while (attempts < maxAttempts) {
-            val overlapping = otherElements.any { elementsOverlap(currentElement, it, margin) }
+            val overlapping = otherElements.any { elementsOverlap(currentElement, it) }
             if (!overlapping) {
                 return currentElement
             }
@@ -1048,14 +1028,6 @@ class CanvasViewModel : ViewModel() {
             attempts++
         }
         return null
-    }
-
-    /**
-     * Updates the strength of the automatic overlap-prevention system.
-     * Exposed to the UI as a simple 3-way toggle (قوي / خفيف / إيقاف).
-     */
-    fun setOverlapMode(mode: OverlapMode) {
-        _state.update { it.copy(overlapMode = mode) }
     }
 
     private var validationJob: Job? = null
@@ -1439,6 +1411,10 @@ class CanvasViewModel : ViewModel() {
                     if (i == j) continue
                     val el1 = list[i]
                     val el2 = list[j]
+
+                    // Same as above: never repel a direct parent from its own child.
+                    // They're supposed to sit close together, connected by a branch line.
+                    if (el1.parentId == el2.id || el2.parentId == el1.id) continue
 
                     val r1Left = el1.position.x - el1.width / 2f
                     val r1Right = el1.position.x + el1.width / 2f
