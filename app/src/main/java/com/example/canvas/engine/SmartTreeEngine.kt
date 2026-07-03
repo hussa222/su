@@ -27,7 +27,6 @@ object SmartTreeEngine {
         for (parent in elements) {
 
             if (parent.id == moving.id) continue
-
             if (!canConnect(parent.type, moving.type)) continue
 
             val anchors = getAnchorsForType(
@@ -48,9 +47,7 @@ object SmartTreeEngine {
                 val distance = sqrt(dx * dx + dy * dy)
 
                 if (distance < SNAP_DISTANCE && distance < bestDistance) {
-
                     bestDistance = distance
-
                     best = SnapResult(
                         parentId = parent.id,
                         anchorId = anchor.id,
