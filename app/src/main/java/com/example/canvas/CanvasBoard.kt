@@ -59,13 +59,13 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
@@ -133,12 +133,10 @@ fun CanvasBoard(
         modifier = modifier
             .fillMaxSize()
             .background(gridBackground)
-            .onSizeChanged { size ->
-                // Keeps viewport size in sync with every layout change
-                // (screen rotation, sidebars opening/closing, etc.)
-                onSizeChanged(size.width.toFloat(), size.height.toFloat())
-            }
             .pointerInput(Unit) {
+                // Track viewport size changes to inform parents
+                onSizeChanged(size.width.toFloat(), size.height.toFloat())
+
                 // Multi-pointer gesture loop
                 coroutineScope {
                     awaitPointerEventScope {
@@ -288,6 +286,14 @@ fun CanvasBoard(
                     scaleY = canvasState.scale
                     translationX = canvasState.offset.x
                     translationY = canvasState.offset.y
+                    // CRITICAL: Compose defaults transformOrigin to the layer's CENTER,
+                    // but every touch/hit-test formula in CanvasViewModel assumes the
+                    // scale pivot is at (0,0) — i.e. screen = offset + scale * local.
+                    // Without this, touch position drifts away from elements as soon as
+                    // scale != 1f (any pinch zoom), and the drift grows with distance
+                    // from screen center. Pinning the origin to (0,0) makes the visual
+                    // transform match the math used for hit-testing and dragging.
+                    transformOrigin = TransformOrigin(0f, 0f)
                 }
         ) {
             // Draw natural organic wooden connections behind elements
