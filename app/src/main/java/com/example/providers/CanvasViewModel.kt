@@ -1531,3 +1531,14 @@ class CanvasViewModel : ViewModel() {
         }
     }
 }
+    fun toggleVisibility(elementId: String) {
+        val currentState = _state.value
+        val updatedElements = currentState.elements.map { element ->
+            if (element.id == elementId) {
+                element.copy(isVisible = !element.isVisible)
+            } else {
+                element
+            }
+        }
+        _state.value = currentState.copy(elements = updatedElements)
+    }
