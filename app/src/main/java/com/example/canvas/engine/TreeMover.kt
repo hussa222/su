@@ -6,47 +6,28 @@ import com.example.models.CanvasElement
 object TreeMover {
 
     fun moveTree(
+        id: String,
+        delta: Offset,
+        elements: MutableList<CanvasElement>
+    ) {
 
-        id:String,
+        val index = elements.indexOfFirst { it.id == id }
+        if (index == -1) return
 
-        delta:Offset,
+        val current = elements[index]
 
-        elements:MutableList<CanvasElement>
+        elements[index] = current.copy(
+            position = current.position + delta
+        )
 
-    ){
+        val children = elements.filter { it.parentId == id }
 
-        val current=
-
-            elements.find{
-
-                it.id==id
-
-            }?:return
-
-        current.position+=delta
-
-        val children=
-
-            elements.filter{
-
-                it.parentId==id
-
-            }
-
-        children.forEach{
-
+        children.forEach {
             moveTree(
-
                 it.id,
-
                 delta,
-
                 elements
-
             )
-
         }
-
     }
-
 }
