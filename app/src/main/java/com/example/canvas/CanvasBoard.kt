@@ -65,6 +65,7 @@ import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
@@ -132,10 +133,12 @@ fun CanvasBoard(
         modifier = modifier
             .fillMaxSize()
             .background(gridBackground)
-            .pointerInput(Unit) {
-                // Track viewport size changes to inform parents
+            .onSizeChanged { size ->
+                // Keeps viewport size in sync with every layout change
+                // (screen rotation, sidebars opening/closing, etc.)
                 onSizeChanged(size.width.toFloat(), size.height.toFloat())
-
+            }
+            .pointerInput(Unit) {
                 // Multi-pointer gesture loop
                 coroutineScope {
                     awaitPointerEventScope {
