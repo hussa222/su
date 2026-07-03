@@ -1,4 +1,4 @@
-package com.example.canvas.components
+package com.example.ui.components
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -15,25 +15,14 @@ import com.example.models.CanvasState
 import com.example.providers.CanvasViewModel
 
 @Composable
-fun LayerManagerSidebar(
-    viewModel: CanvasViewModel,
-    canvasState: CanvasState
-) {
-    Card(
-        modifier = Modifier
-            .width(200.dp)
-            .fillMaxHeight()
-            .padding(8.dp)
-    ) {
+fun LayerManagerSidebar(viewModel: CanvasViewModel, canvasState: CanvasState) {
+    Card(modifier = Modifier.width(200.dp).fillMaxHeight().padding(8.dp)) {
         Column(modifier = Modifier.padding(8.dp)) {
-            Text(text = "الطبقات", style = MaterialTheme.typography.titleMedium)
+            Text(text = "إدارة الطبقات", style = MaterialTheme.typography.titleMedium)
             Divider()
             LazyColumn {
                 items(canvasState.elements) { element ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+                    Row(modifier = Modifier.fillMaxWidth().padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text(text = element.title, modifier = Modifier.weight(1f))
                         IconButton(onClick = { viewModel.toggleVisibility(element.id) }) {
                             Icon(
@@ -47,4 +36,3 @@ fun LayerManagerSidebar(
         }
     }
 }
-
