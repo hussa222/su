@@ -1,0 +1,8 @@
+{
+  "name": "Remix: Canvas Designer",
+  "description": "An interactive drawing and design board with rich zoom, pan, grid support, and coordinate tracking.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
