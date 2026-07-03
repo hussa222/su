@@ -1,6 +1,7 @@
 package com.example.widgets
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -21,18 +22,22 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.models.CanvasElement
 import com.example.models.CanvasState
 import com.example.models.ElementType
 import com.example.providers.CanvasViewModel
+
+/** يُشارك بين اللوحة والسلايدر: صحيح أثناء سحب أي سلايدر داخل اللوحة. */
+private val LocalSliderDragging = compositionLocalOf { mutableStateOf(false) }
 
 @Composable
 fun PropertiesSidebar(
@@ -43,128 +48,139 @@ fun PropertiesSidebar(
     val activeElementId = canvasState.activePropertiesElementId
     val element = canvasState.elements.find { it.id == activeElementId }
 
-    AnimatedVisibility(
-        visible = element != null,
-        enter = slideInHorizontally(initialOffsetX = { it }) + fadeIn(),
-        exit = slideOutHorizontally(targetOffsetX = { it }) + fadeOut(),
-        modifier = modifier
-            .fillMaxHeight()
-            .widthIn(max = 380.dp)
-            .fillMaxWidth(0.85f)
+    // حالة الطي (سهم الإخفاء/الإظهار)
+    var isCollapsed by rememberSaveable { mutableStateOf(false) }
+
+    // حالة سحب السلايدر — تُستخدم لتفعيل الشفافية على إطار اللوحة
+    val draggingState = remember { mutableStateOf(false) }
+    val chromeAlpha by animateFloatAsState(
+        targetValue = if (draggingState.value) 0.08f else 1f,
+        label = "sidebarChromeAlpha"
+    )
+
+    CollapsibleSidePanel(
+        isCollapsed = isCollapsed || element == null,
+        onToggleCollapsed = { isCollapsed = !isCollapsed },
+        edge = PanelEdge.END,
+        modifier = modifier.fillMaxHeight()
     ) {
         if (element != null) {
-            Surface(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .border(
-                        width = 1.dp,
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                        shape = RoundedCornerShape(topStart = 24.dp, bottomStart = 24.dp)
-                    ),
-                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
-                tonalElevation = 12.dp,
-                shape = RoundedCornerShape(topStart = 24.dp, bottomStart = 24.dp)
-            ) {
-                Column(
+            CompositionLocalProvider(LocalSliderDragging provides draggingState) {
+                Surface(
                     modifier = Modifier
                         .fillMaxSize()
-                        .statusBarsPadding()
-                        .navigationBarsPadding()
+                        .graphicsLayer(alpha = chromeAlpha)
+                        .border(
+                            width = 1.dp,
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                            shape = RoundedCornerShape(topStart = 24.dp, bottomStart = 24.dp)
+                        ),
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
+                    tonalElevation = 12.dp,
+                    shape = RoundedCornerShape(topStart = 24.dp, bottomStart = 24.dp)
                 ) {
-                    // Sidebar Header
-                    Row(
+                    Column(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 14.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
+                            .fillMaxSize()
+                            .statusBarsPadding()
+                            .navigationBarsPadding()
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = when (element.type) {
-                                    ElementType.TRUNK -> Icons.Default.Forest
-                                    ElementType.BRANCH -> Icons.Default.Yard
-                                    ElementType.LEAF -> Icons.Default.Eco
-                                },
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Column {
-                                Text(
-                                    text = "خصائص العنصر",
-                                    style = MaterialTheme.typography.titleMedium.copy(
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 16.sp
-                                    ),
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Text(
-                                    text = when (element.type) {
-                                        ElementType.TRUNK -> "جذع شجرة العائلة"
-                                        ElementType.BRANCH -> "فرع العائلة الفرعي"
-                                        ElementType.LEAF -> "ورقة حفيد العائلة"
+                        // Sidebar Header
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = when (element.type) {
+                                        ElementType.TRUNK -> Icons.Default.Forest
+                                        ElementType.BRANCH -> Icons.Default.Yard
+                                        ElementType.LEAF -> Icons.Default.Eco
                                     },
-                                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Column {
+                                    Text(
+                                        text = "خصائص العنصر",
+                                        style = MaterialTheme.typography.titleMedium.copy(
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 16.sp
+                                        ),
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = when (element.type) {
+                                            ElementType.TRUNK -> "جذع شجرة العائلة"
+                                            ElementType.BRANCH -> "فرع العائلة الفرعي"
+                                            ElementType.LEAF -> "ورقة حفيد العائلة"
+                                        },
+                                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                                    )
+                                }
+                            }
+
+                            IconButton(
+                                onClick = { viewModel.showPropertiesSidebar(null) },
+                                modifier = Modifier
+                                    .testTag("properties_close_button")
+                                    .size(40.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "إغلاق اللوحة الجانبية (Close Sidebar)",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
 
-                        IconButton(
-                            onClick = { viewModel.showPropertiesSidebar(null) },
-                            modifier = Modifier
-                                .testTag("properties_close_button")
-                                .size(40.dp)
+                        Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+
+                        // Tab Navigation
+                        var selectedTab by remember { mutableStateOf(0) }
+                        val tabs = listOf("الأبعاد", "التنسيق", "النصوص", "الخصائص")
+                        TabRow(
+                            selectedTabIndex = selectedTab,
+                            containerColor = Color.Transparent,
+                            divider = {},
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "إغلاق اللوحة الجانبية (Close Sidebar)",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                            tabs.forEachIndexed { index, title ->
+                                Tab(
+                                    selected = selectedTab == index,
+                                    onClick = { selectedTab = index },
+                                    text = {
+                                        Text(
+                                            text = title,
+                                            fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Medium,
+                                            fontSize = 12.sp
+                                        )
+                                    }
+                                )
+                            }
                         }
-                    }
 
-                    Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                        Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
 
-                    // Tab Navigation
-                    var selectedTab by remember { mutableStateOf(0) }
-                    val tabs = listOf("الأبعاد", "التنسيق", "النصوص", "الخصائص")
-                    TabRow(
-                        selectedTabIndex = selectedTab,
-                        containerColor = Color.Transparent,
-                        divider = {},
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        tabs.forEachIndexed { index, title ->
-                            Tab(
-                                selected = selectedTab == index,
-                                onClick = { selectedTab = index },
-                                text = {
-                                    Text(
-                                        text = title,
-                                        fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Medium,
-                                        fontSize = 12.sp
-                                    )
-                                }
-                            )
-                        }
-                    }
-
-                    Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
-
-                    // Properties Scrollable Container
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxWidth()
-                    ) {
-                        when (selectedTab) {
-                            0 -> TransformTab(element = element, viewModel = viewModel)
-                            1 -> StyleTab(element = element, viewModel = viewModel)
-                            2 -> TextTab(element = element, viewModel = viewModel)
-                            3 -> SpecificTab(element = element, viewModel = viewModel)
+                        // Properties Scrollable Container — لا يتأثر بشفافية الإطار، يبقى واضحًا أثناء السحب
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxWidth()
+                                .graphicsLayer(alpha = 1f / chromeAlpha.coerceAtLeast(0.08f) * chromeAlpha) // يبقى دائمًا 1f فعليًا
+                        ) {
+                            when (selectedTab) {
+                                0 -> TransformTab(element = element, viewModel = viewModel)
+                                1 -> StyleTab(element = element, viewModel = viewModel)
+                                2 -> TextTab(element = element, viewModel = viewModel)
+                                3 -> SpecificTab(element = element, viewModel = viewModel)
+                            }
                         }
                     }
                 }
@@ -180,11 +196,8 @@ private fun TransformTab(element: CanvasElement, viewModel: CanvasViewModel) {
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        item {
-            SidebarSectionTitle(text = "الأبعاد والتحجيم (Dimensions)")
-        }
+        item { SidebarSectionTitle(text = "الأبعاد والتحجيم (Dimensions)") }
 
-        // Width
         item {
             SidebarSliderControl(
                 label = "العرض (Width)",
@@ -196,7 +209,6 @@ private fun TransformTab(element: CanvasElement, viewModel: CanvasViewModel) {
             )
         }
 
-        // Height
         item {
             SidebarSliderControl(
                 label = "الارتفاع (Height)",
@@ -208,7 +220,6 @@ private fun TransformTab(element: CanvasElement, viewModel: CanvasViewModel) {
             )
         }
 
-        // Thickness
         item {
             SidebarSliderControl(
                 label = "سمك الهيكل (Thickness)",
@@ -220,7 +231,6 @@ private fun TransformTab(element: CanvasElement, viewModel: CanvasViewModel) {
             )
         }
 
-        // Rotation
         item {
             SidebarSliderControl(
                 label = "زاوية الدوران (Rotation)",
@@ -232,7 +242,6 @@ private fun TransformTab(element: CanvasElement, viewModel: CanvasViewModel) {
             )
         }
 
-        // Curvature
         item {
             SidebarSliderControl(
                 label = "انحناء الفرع (Curvature)",
@@ -244,15 +253,10 @@ private fun TransformTab(element: CanvasElement, viewModel: CanvasViewModel) {
             )
         }
 
-        item {
-            Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
-        }
+        item { Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)) }
 
-        item {
-            SidebarSectionTitle(text = "الإحداثيات على اللوحة (Coordinates)")
-        }
+        item { SidebarSectionTitle(text = "الإحداثيات على اللوحة (Coordinates)") }
 
-        // Position X & Y
         item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -275,7 +279,6 @@ private fun TransformTab(element: CanvasElement, viewModel: CanvasViewModel) {
             }
         }
 
-        // Reset Transform Button
         item {
             Spacer(modifier = Modifier.height(10.dp))
             Button(
@@ -313,14 +316,8 @@ private fun TransformTab(element: CanvasElement, viewModel: CanvasViewModel) {
 @Composable
 private fun StyleTab(element: CanvasElement, viewModel: CanvasViewModel) {
     val presetColors = listOf(
-        "#8B5A2B", // Wood Brown
-        "#3E2723", // Dark Brown
-        "#2E7D32", // Leaf Green
-        "#1B5E20", // Deep Green
-        "#311B92", // Deep Indigo
-        "#0D47A1", // Dark Blue
-        "#B71C1C", // Deep Red
-        "#E65100"  // Deep Orange
+        "#8B5A2B", "#3E2723", "#2E7D32", "#1B5E20",
+        "#311B92", "#0D47A1", "#B71C1C", "#E65100"
     )
 
     LazyColumn(
@@ -328,11 +325,8 @@ private fun StyleTab(element: CanvasElement, viewModel: CanvasViewModel) {
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        item {
-            SidebarSectionTitle(text = "ألوان المظهر والخلفية (Appearance)")
-        }
+        item { SidebarSectionTitle(text = "ألوان المظهر والخلفية (Appearance)") }
 
-        // Background Color Hex Input
         item {
             SidebarColorPicker(
                 label = "لون العنصر الأساسي (Color)",
@@ -342,7 +336,6 @@ private fun StyleTab(element: CanvasElement, viewModel: CanvasViewModel) {
             )
         }
 
-        // Opacity
         item {
             SidebarSliderControl(
                 label = "الشفافية (Opacity)",
@@ -354,15 +347,10 @@ private fun StyleTab(element: CanvasElement, viewModel: CanvasViewModel) {
             )
         }
 
-        item {
-            Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
-        }
+        item { Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)) }
 
-        item {
-            SidebarSectionTitle(text = "الحدود الخارجية (Border)")
-        }
+        item { SidebarSectionTitle(text = "الحدود الخارجية (Border)") }
 
-        // Border Color
         item {
             SidebarColorPicker(
                 label = "لون الحدود (Border Color)",
@@ -372,7 +360,6 @@ private fun StyleTab(element: CanvasElement, viewModel: CanvasViewModel) {
             )
         }
 
-        // Border Thickness
         item {
             SidebarSliderControl(
                 label = "سمك الحدود (Border Thickness)",
@@ -384,15 +371,10 @@ private fun StyleTab(element: CanvasElement, viewModel: CanvasViewModel) {
             )
         }
 
-        item {
-            Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
-        }
+        item { Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)) }
 
-        item {
-            SidebarSectionTitle(text = "ظل العنصر (Shadow)")
-        }
+        item { SidebarSectionTitle(text = "ظل العنصر (Shadow)") }
 
-        // Shadow toggle
         item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -407,7 +389,6 @@ private fun StyleTab(element: CanvasElement, viewModel: CanvasViewModel) {
             }
         }
 
-        // Shadow elevation
         if (element.hasShadow) {
             item {
                 SidebarSliderControl(
@@ -421,7 +402,6 @@ private fun StyleTab(element: CanvasElement, viewModel: CanvasViewModel) {
             }
         }
 
-        // Reset Style Button
         item {
             Spacer(modifier = Modifier.height(10.dp))
             Button(
@@ -460,11 +440,8 @@ private fun TextTab(element: CanvasElement, viewModel: CanvasViewModel) {
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        item {
-            SidebarSectionTitle(text = "إدخال وتنسيق العناوين (Label & Text)")
-        }
+        item { SidebarSectionTitle(text = "إدخال وتنسيق العناوين (Label & Text)") }
 
-        // Title Input
         item {
             OutlinedTextField(
                 value = element.title,
@@ -476,7 +453,6 @@ private fun TextTab(element: CanvasElement, viewModel: CanvasViewModel) {
             )
         }
 
-        // Font Size
         item {
             SidebarSliderControl(
                 label = "حجم الخط (Font Size)",
@@ -488,7 +464,6 @@ private fun TextTab(element: CanvasElement, viewModel: CanvasViewModel) {
             )
         }
 
-        // Font Color
         item {
             SidebarColorPicker(
                 label = "لون الخط الأساسي (Font Color)",
@@ -498,7 +473,6 @@ private fun TextTab(element: CanvasElement, viewModel: CanvasViewModel) {
             )
         }
 
-        // Font Family
         item {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(text = "نوع الخط (Font Family)", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold))
@@ -526,7 +500,6 @@ private fun TextTab(element: CanvasElement, viewModel: CanvasViewModel) {
             }
         }
 
-        // Alignment
         item {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(text = "محاذاة النص (Alignment)", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold))
@@ -555,7 +528,6 @@ private fun TextTab(element: CanvasElement, viewModel: CanvasViewModel) {
             }
         }
 
-        // Reset Text Button
         item {
             Spacer(modifier = Modifier.height(10.dp))
             Button(
@@ -583,12 +555,9 @@ private fun TextTab(element: CanvasElement, viewModel: CanvasViewModel) {
 
 @Composable
 private fun SpecificTab(element: CanvasElement, viewModel: CanvasViewModel) {
-    // Show 10 text inputs for family names - compute outside LazyColumn to be in @Composable context
     val paddedNames = remember(element.trunkNames) {
         val names = element.trunkNames.toMutableList()
-        while (names.size < 10) {
-            names.add("")
-        }
+        while (names.size < 10) names.add("")
         names
     }
 
@@ -599,9 +568,7 @@ private fun SpecificTab(element: CanvasElement, viewModel: CanvasViewModel) {
     ) {
         when (element.type) {
             ElementType.TRUNK -> {
-                item {
-                    SidebarSectionTitle(text = "قائمة أسماء العائلة الممتدة (حتى 10 أسماء)")
-                }
+                item { SidebarSectionTitle(text = "قائمة أسماء العائلة الممتدة (حتى 10 أسماء)") }
 
                 itemsIndexed(paddedNames) { index, name ->
                     OutlinedTextField(
@@ -609,9 +576,7 @@ private fun SpecificTab(element: CanvasElement, viewModel: CanvasViewModel) {
                         onValueChange = { newVal ->
                             val updatedList = paddedNames.toMutableList()
                             updatedList[index] = newVal
-                            viewModel.updateElement(element.id) { el ->
-                                el.copy(trunkNames = updatedList)
-                            }
+                            viewModel.updateElement(element.id) { el -> el.copy(trunkNames = updatedList) }
                         },
                         label = { Text("الاسم ${index + 1}") },
                         modifier = Modifier.fillMaxWidth(),
@@ -620,10 +585,7 @@ private fun SpecificTab(element: CanvasElement, viewModel: CanvasViewModel) {
                     )
                 }
 
-                // Spacing between names in Trunk
-                item {
-                    Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
-                }
+                item { Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)) }
 
                 item {
                     SidebarSliderControl(
@@ -638,11 +600,8 @@ private fun SpecificTab(element: CanvasElement, viewModel: CanvasViewModel) {
             }
 
             ElementType.BRANCH -> {
-                item {
-                    SidebarSectionTitle(text = "تنسيق دائرة رأس الفرع (Circle Head)")
-                }
+                item { SidebarSectionTitle(text = "تنسيق دائرة رأس الفرع (Circle Head)") }
 
-                // Circle Head Diameter
                 item {
                     SidebarSliderControl(
                         label = "قطر الدائرة (Circle Diameter)",
@@ -654,7 +613,6 @@ private fun SpecificTab(element: CanvasElement, viewModel: CanvasViewModel) {
                     )
                 }
 
-                // Circle Head Background Color
                 item {
                     SidebarColorPicker(
                         label = "لون الدائرة (Circle Background)",
@@ -664,7 +622,6 @@ private fun SpecificTab(element: CanvasElement, viewModel: CanvasViewModel) {
                     )
                 }
 
-                // Circle Border Color
                 item {
                     SidebarColorPicker(
                         label = "لون حدود الدائرة (Circle Border)",
@@ -674,7 +631,6 @@ private fun SpecificTab(element: CanvasElement, viewModel: CanvasViewModel) {
                     )
                 }
 
-                // Circle Border Thickness
                 item {
                     SidebarSliderControl(
                         label = "سمك حدود الدائرة (Border Thickness)",
@@ -686,7 +642,6 @@ private fun SpecificTab(element: CanvasElement, viewModel: CanvasViewModel) {
                     )
                 }
 
-                // Circle Text Color
                 item {
                     SidebarColorPicker(
                         label = "لون نص الدائرة (Circle Text Color)",
@@ -696,7 +651,6 @@ private fun SpecificTab(element: CanvasElement, viewModel: CanvasViewModel) {
                     )
                 }
 
-                // Circle Text Size
                 item {
                     SidebarSliderControl(
                         label = "حجم نص الدائرة (Circle Text Size)",
@@ -708,7 +662,6 @@ private fun SpecificTab(element: CanvasElement, viewModel: CanvasViewModel) {
                     )
                 }
 
-                // Circle Font Family
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(text = "خط دائرة الرأس (Circle Font Family)", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold))
@@ -738,9 +691,7 @@ private fun SpecificTab(element: CanvasElement, viewModel: CanvasViewModel) {
             }
 
             ElementType.LEAF -> {
-                item {
-                    SidebarSectionTitle(text = "موقع النص داخل الورقة (Label Placement)")
-                }
+                item { SidebarSectionTitle(text = "موقع النص داخل الورقة (Label Placement)") }
 
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -782,7 +733,6 @@ private fun SpecificTab(element: CanvasElement, viewModel: CanvasViewModel) {
             }
         }
 
-        // Unified Element Actions Section for all Element Types!
         item {
             Spacer(modifier = Modifier.height(12.dp))
             Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
@@ -794,20 +744,16 @@ private fun SpecificTab(element: CanvasElement, viewModel: CanvasViewModel) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(1.dp)
-                )
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(1.dp))
             ) {
                 Column(
                     modifier = Modifier.padding(12.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    // Lock & Visibility row
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        // Lock/Unlock Button
                         val isLocked = element.locked
                         Button(
                             onClick = { viewModel.lockElement(element.id, !isLocked) },
@@ -824,14 +770,9 @@ private fun SpecificTab(element: CanvasElement, viewModel: CanvasViewModel) {
                                 modifier = Modifier.size(16.dp)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = if (isLocked) "إلغاء القفل" else "قفل العنصر",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold
-                            )
+                            Text(text = if (isLocked) "إلغاء القفل" else "قفل العنصر", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         }
 
-                        // Hide Button
                         Button(
                             onClick = { viewModel.hideElement(element.id, false) },
                             colors = ButtonDefaults.buttonColors(
@@ -841,62 +782,41 @@ private fun SpecificTab(element: CanvasElement, viewModel: CanvasViewModel) {
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier.weight(1f)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.VisibilityOff,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp)
-                            )
+                            Icon(imageVector = Icons.Default.VisibilityOff, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = "إخفاء العنصر",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold
-                            )
+                            Text(text = "إخفاء العنصر", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         }
                     }
 
-                    // Copy & Cut row
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        // Copy Button
                         OutlinedButton(
                             onClick = { viewModel.copySelected() },
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier.weight(1f)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.ContentCopy,
-                                contentDescription = null,
-                                modifier = Modifier.size(14.dp)
-                            )
+                            Icon(imageVector = Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(14.dp))
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(text = "نسخ", fontSize = 11.sp)
                         }
 
-                        // Cut Button
                         OutlinedButton(
                             onClick = { viewModel.cutSelected() },
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier.weight(1f)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.ContentCut,
-                                contentDescription = null,
-                                modifier = Modifier.size(14.dp)
-                            )
+                            Icon(imageVector = Icons.Default.ContentCut, contentDescription = null, modifier = Modifier.size(14.dp))
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(text = "قص", fontSize = 11.sp)
                         }
                     }
 
-                    // Duplicate & Delete row
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        // Duplicate Button
                         Button(
                             onClick = { viewModel.duplicateSelected() },
                             colors = ButtonDefaults.buttonColors(
@@ -906,16 +826,11 @@ private fun SpecificTab(element: CanvasElement, viewModel: CanvasViewModel) {
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier.weight(1f)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.ContentCopy,
-                                contentDescription = null,
-                                modifier = Modifier.size(14.dp)
-                            )
+                            Icon(imageVector = Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(14.dp))
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(text = "تكرار", fontSize = 11.sp)
                         }
 
-                        // Delete Button
                         Button(
                             onClick = { viewModel.deleteSelected() },
                             colors = ButtonDefaults.buttonColors(
@@ -925,11 +840,7 @@ private fun SpecificTab(element: CanvasElement, viewModel: CanvasViewModel) {
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier.weight(1f)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Delete,
-                                contentDescription = null,
-                                modifier = Modifier.size(14.dp)
-                            )
+                            Icon(imageVector = Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(14.dp))
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(text = "حذف", fontSize = 11.sp)
                         }
@@ -944,11 +855,7 @@ private fun SpecificTab(element: CanvasElement, viewModel: CanvasViewModel) {
 private fun SidebarSectionTitle(text: String) {
     Text(
         text = text,
-        style = MaterialTheme.typography.titleSmall.copy(
-            fontWeight = FontWeight.Bold,
-            fontSize = 13.sp,
-            letterSpacing = 0.5.sp
-        ),
+        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, fontSize = 13.sp, letterSpacing = 0.5.sp),
         color = MaterialTheme.colorScheme.primary,
         modifier = Modifier.padding(vertical = 4.dp)
     )
@@ -964,6 +871,8 @@ private fun SidebarSliderControl(
     testTag: String
 ) {
     var isDragging by remember { mutableStateOf(false) }
+    val dragging = LocalSliderDragging.current
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -983,7 +892,6 @@ private fun SidebarSliderControl(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                // Decrement Button
                 IconButton(
                     onClick = {
                         viewModel.saveUndoState()
@@ -993,14 +901,13 @@ private fun SidebarSliderControl(
                 ) {
                     Icon(imageVector = Icons.Default.RemoveCircleOutline, contentDescription = null, modifier = Modifier.size(16.dp))
                 }
-                
+
                 Text(
                     text = String.format("%.1f", value),
                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
                     color = MaterialTheme.colorScheme.onSurface
                 )
 
-                // Increment Button
                 IconButton(
                     onClick = {
                         viewModel.saveUndoState()
@@ -1019,11 +926,13 @@ private fun SidebarSliderControl(
                 if (!isDragging) {
                     viewModel.saveUndoState()
                     isDragging = true
+                    dragging.value = true
                 }
                 onValueChange(it)
             },
             onValueChangeFinished = {
                 isDragging = false
+                dragging.value = false
             },
             valueRange = range,
             modifier = Modifier.fillMaxWidth()
@@ -1045,9 +954,7 @@ private fun SidebarNumberInput(
         )
         OutlinedTextField(
             value = if (value % 1.0f == 0.0f) value.toInt().toString() else String.format("%.1f", value),
-            onValueChange = { newVal ->
-                newVal.toFloatOrNull()?.let { onValueChange(it) }
-            },
+            onValueChange = { newVal -> newVal.toFloatOrNull()?.let { onValueChange(it) } },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             shape = RoundedCornerShape(10.dp),
             singleLine = true,
@@ -1073,7 +980,6 @@ private fun SidebarColorPicker(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
-        // Presets Color dots
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -1096,7 +1002,6 @@ private fun SidebarColorPicker(
             }
         }
 
-        // Hex manual string input
         OutlinedTextField(
             value = hexValue,
             onValueChange = { onColorChange(it) },
@@ -1106,11 +1011,8 @@ private fun SidebarColorPicker(
                         .size(16.dp)
                         .clip(CircleShape)
                         .background(
-                            try {
-                                Color(android.graphics.Color.parseColor(hexValue))
-                            } catch (e: Exception) {
-                                Color.Transparent
-                            }
+                            try { Color(android.graphics.Color.parseColor(hexValue)) }
+                            catch (e: Exception) { Color.Transparent }
                         )
                         .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
                 )
