@@ -3,6 +3,7 @@ package com.example.canvas.engine
 import androidx.compose.ui.geometry.Offset
 import com.example.models.CanvasElement
 import com.example.models.ElementType
+import com.example.providers.getAnchorsForType
 import kotlin.math.sqrt
 
 object SmartTreeEngine {
@@ -27,39 +28,39 @@ object SmartTreeEngine {
 
             if (parent.id == moving.id) continue
 
-            if (!canConnect(parent.type, moving.type))
-                continue
+            if (!canConnect(parent.type, moving.type)) continue
 
-            for (anchor in parent.anchors) {
+            val anchors = getAnchorsForType(
+                parent.type,
+                parent.width,
+                parent.height
+            )
 
-                if (anchor.isOccupied)
-                    continue
+            for (anchor in anchors) {
 
-                val dx = anchor.position.x - moving.position.x
-                val dy = anchor.position.y - moving.position.y
+                if (anchor.isInput) continue
+
+                val anchorPosition = parent.position + anchor.relativePos
+
+                val dx = anchorPosition.x - moving.position.x
+                val dy = anchorPosition.y - moving.position.y
 
                 val distance = sqrt(dx * dx + dy * dy)
 
-                if (distance < SNAP_DISTANCE &&
-                    distance < bestDistance
-                ) {
+                if (distance < SNAP_DISTANCE && distance < bestDistance) {
 
                     bestDistance = distance
 
                     best = SnapResult(
-                        parent.id,
-                        anchor.id,
-                        anchor.position
+                        parentId = parent.id,
+                        anchorId = anchor.id,
+                        position = anchorPosition
                     )
-
                 }
-
             }
-
         }
 
         return best
-
     }
 
     fun canConnect(
@@ -74,13 +75,10 @@ object SmartTreeEngine {
 
             ElementType.BRANCH ->
                 child == ElementType.BRANCH ||
-                child == ElementType.LEAF
+                        child == ElementType.LEAF
 
             ElementType.LEAF ->
                 false
-
         }
-
     }
-
 }
