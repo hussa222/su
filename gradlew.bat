@@ -1,5 +1,5 @@
-#!/bin/sh
+@ECHO OFF
 
-DIR="$(cd "$(dirname "$0")"; pwd)"
+SET DIR=%~dp0
 
-exec "$DIR/gradle/wrapper/gradle-wrapper.jar" "$@"
+java -jar "%DIR%gradle\wrapper\gradle-wrapper.jar" %*
