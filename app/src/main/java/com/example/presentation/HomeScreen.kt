@@ -1,10 +1,5 @@
 package com.example.presentation
 
-import android.widget.Toast
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.scaleIn
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -15,35 +10,48 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Brush
-import androidx.compose.material.icons.filled.ChevronLeft
-import androidx.compose.material.icons.filled.CloudUpload
-import androidx.compose.material.icons.filled.Code
-import androidx.compose.material.icons.filled.DesignServices
-import androidx.compose.material.icons.filled.DoubleArrow
-import androidx.compose.material.icons.filled.Draw
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Eco
+import androidx.compose.material.icons.filled.Forest
+import androidx.compose.material.icons.filled.RestartAlt
+import androidx.compose.material.icons.filled.SelectAll
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.Yard
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Cached
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.VerticalAlignBottom
+import androidx.compose.material.icons.filled.VerticalAlignTop
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.material3.Button
+import androidx.compose.material3.Divider
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -52,370 +60,568 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.delay
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.canvas.CanvasBoard
+import com.example.models.ElementType
+import com.example.providers.CanvasViewModel
+import com.example.widgets.ControlPanel
+import com.example.widgets.CoordinatePanel
+import com.example.widgets.PropertiesSidebar
 
 /**
- * HomeScreen introduces the application.
- * Styled with a clean blueprint visual card and M3 buttons.
+ * CanvasScreen hosts the interactive workspace.
+ * Combines the CanvasBoard, ControlPanel, CoordinatePanel, Floating Creative Tools Bar, and the floating header.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(
-    onCreateNewProject: () -> Unit,
-    modifier: Modifier = Modifier
+fun CanvasScreen(
+    onNavigateBack: () -> Unit,
+    modifier: Modifier = Modifier,
+    canvasViewModel: CanvasViewModel = viewModel()
 ) {
-    val context = LocalContext.current
-    var isVisible by remember { mutableStateOf(false) }
+    val canvasState by canvasViewModel.state.collectAsState()
 
-    LaunchedEffect(Unit) {
-        delay(100)
-        isVisible = true
-    }
+    // Track viewport size to center zoom steps
+    var viewportWidth by remember { mutableStateOf(1080f) }
+    var viewportHeight by remember { mutableStateOf(1920f) }
+    var panelsVisible by remember { mutableStateOf(true) }
 
-    Scaffold(
+    Box(
         modifier = modifier.fillMaxSize()
-    ) { innerPadding ->
-        Column(
+    ) {
+        // 1. The Core Canvas Engine
+        CanvasBoard(
+            viewModel = canvasViewModel,
+            canvasState = canvasState,
+            onSizeChanged = { w, h ->
+                viewportWidth = w
+                viewportHeight = h
+            },
+            modifier = Modifier.fillMaxSize()
+        )
+
+        // 2. Floating Header Bar (Top Bar)
+        if (panelsVisible) {
+        Surface(
             modifier = Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
-                .padding(innerPadding)
-                .verticalScroll(rememberScrollState())
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween
+                .statusBarsPadding()
+                .fillMaxWidth()
+                .padding(16.dp)
+                .clip(RoundedCornerShape(20.dp))
+                .border(
+                    width = 1.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                    shape = RoundedCornerShape(20.dp)
+                ),
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+            tonalElevation = 4.dp
         ) {
-            // 1. Top Header (Logo and Title)
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(top = 24.dp)
-            ) {
-                // Animated App Icon Badge - Clean Minimalism Style
-                Box(
-                    modifier = Modifier
-                        .size(80.dp)
-                        .clip(RoundedCornerShape(24.dp))
-                        .background(MaterialTheme.colorScheme.surface)
-                        .border(
-                            width = 1.dp,
-                            color = MaterialTheme.colorScheme.outlineVariant,
-                            shape = RoundedCornerShape(24.dp)
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.DesignServices,
-                        contentDescription = "Logo",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(40.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                // App Title (Arabic & English)
-                Text(
-                    text = "لوحة التصميم التفاعلية",
-                    style = MaterialTheme.typography.headlineMedium.copy(
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = FontFamily.SansSerif,
-                        fontSize = 26.sp,
-                        letterSpacing = (-0.5).sp
-                    ),
-                    color = MaterialTheme.colorScheme.onBackground,
-                    textAlign = TextAlign.Center
-                )
-
-                Spacer(modifier = Modifier.height(6.dp))
-
-                Text(
-                    text = "CANVAS ENGINE V1.0 • ADVANCED GRAPHICS",
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary,
-                        letterSpacing = 1.5.sp
-                    ),
-                    textAlign = TextAlign.Center
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Text(
-                    text = "محرك الرسم الهندسي المتقدم",
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
-                    ),
-                    textAlign = TextAlign.Center
-                )
-            }
-
-            // 2. Beautiful Interactive Vector Art (Drawing Preview)
-            AnimatedVisibility(
-                visible = isVisible,
-                enter = fadeIn() + scaleIn(initialScale = 0.9f)
-            ) {
-                BlueprintArtCard()
-            }
-
-            // 3. Bottom Action Buttons Container
-            Column(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 32.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // Button 1: Create New Project (Main Action)
-                Button(
-                    onClick = onCreateNewProject,
+                // Return to main menu (Back Button)
+                IconButton(
+                    onClick = onNavigateBack,
                     modifier = Modifier
-                        .testTag("create_new_project_button")
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary
-                    ),
-                    elevation = ButtonDefaults.buttonElevation(
-                        defaultElevation = 2.dp,
-                        pressedElevation = 6.dp
-                    )
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = "New",
-                            tint = Color.White
-                        )
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Text(
-                            text = "إنشاء مشروع جديد",
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp
-                            ),
-                            color = Color.White
-                        )
-                    }
-                }
-
-                // Button 2: Import Project (Secondary Action)
-                OutlinedButton(
-                    onClick = {
-                        Toast.makeText(
-                            context,
-                            "استيراد المشاريع سيتوفر في مراحل تطوير قادمة",
-                            Toast.LENGTH_LONG
-                        ).show()
-                    },
-                    modifier = Modifier
-                        .testTag("import_project_button")
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    border = ButtonDefaults.outlinedButtonBorder.copy()
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.CloudUpload,
-                            contentDescription = "Import",
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Text(
-                            text = "استيراد مشروع خارجي",
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        )
-                    }
-                }
-
-                // Small decorative phase badge
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center,
-                    modifier = Modifier.padding(top = 8.dp)
+                        .testTag("canvas_back_button")
+                        .size(48.dp) // Touch target > 48dp
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Code,
-                        contentDescription = "Engine Core",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                        modifier = Modifier.size(16.dp)
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "الرجوع للرئيسية (Back to Home)",
+                        tint = MaterialTheme.colorScheme.onSurface
                     )
-                    Spacer(modifier = Modifier.width(6.dp))
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                // Workspace title info
+                Box(modifier = Modifier.weight(1f)) {
+                    Column {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFF2E7D32)) // Leaf Green Active Indicator
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "محرر شجرة العائلة الذكي",
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 15.sp
+                                ),
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                        Text(
+                            text = "SMART CONNECTION ENGINE • PHASE 4",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 1.2.sp
+                            ),
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(start = 16.dp, top = 2.dp)
+                        )
+                    }
+                }
+
+                // Inline quick reset action
+                IconButton(
+                    onClick = { canvasViewModel.resetCanvas() },
+                    modifier = Modifier
+                        .testTag("canvas_header_reset_button")
+                        .size(48.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.RestartAlt,
+                        contentDescription = "إعادة التصفير (Reset View)",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+        }
+
+        // 3. Floating Sidebar Control Panel (Vertical scale adjusting + reset)
+        if (panelsVisible) {
+        ControlPanel(
+            onZoomIn = { center -> canvasViewModel.zoomIn(center) },
+            onZoomOut = { center -> canvasViewModel.zoomOut(center) },
+            onReset = { canvasViewModel.resetCanvas() },
+            viewportWidth = viewportWidth,
+            viewportHeight = viewportHeight,
+            scale = canvasState.scale,
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .padding(end = 16.dp)
+        )
+        }
+
+        // 4. Creative Element Toolbox (Floating panel above Coordinates)
+        Surface(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 110.dp) // Position nicely elevated above coordinates
+                .clip(RoundedCornerShape(24.dp))
+                .border(
+                    width = 1.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                    shape = RoundedCornerShape(24.dp)
+                ),
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+            tonalElevation = 6.dp
+        ) {
+            Row(
+                modifier = Modifier
+                    .padding(horizontal = 14.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Multi-select Mode Toggle
+                val isMulti = canvasState.isMultiSelectMode
+                IconButton(
+                    onClick = { canvasViewModel.toggleMultiSelectMode() },
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(
+                            if (isMulti) MaterialTheme.colorScheme.primary else Color.Transparent
+                        )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.SelectAll,
+                        contentDescription = "تحديد متعدد (Multi-Select)",
+                        tint = if (isMulti) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+
+                // Vertical Divider
+                Box(
+                    modifier = Modifier
+                        .size(width = 1.dp, height = 20.dp)
+                        .background(MaterialTheme.colorScheme.outlineVariant)
+                )
+
+                // Tool 1: Add Trunk
+                TextButton(
+                    onClick = {
+                        val randomOffset = Offset((-100..100).random().toFloat(), (-100..100).random().toFloat())
+                        canvasViewModel.addElement(ElementType.TRUNK, randomOffset)
+                    },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = Color(0xFF8B5A2B)
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Forest,
+                        contentDescription = "إضافة جذع عائلة",
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "محرك اللوحة الرسومية نشط • 60 FPS Engine",
+                        text = "+ جذع",
                         style = MaterialTheme.typography.labelMedium.copy(
-                            fontWeight = FontWeight.Medium,
-                            fontSize = 11.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp
+                        )
+                    )
+                }
+
+                // Tool 2: Add Branch
+                TextButton(
+                    onClick = {
+                        val randomOffset = Offset((-100..100).random().toFloat(), (-100..100).random().toFloat())
+                        canvasViewModel.addElement(ElementType.BRANCH, randomOffset)
+                    },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = Color(0xFF5D4037)
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Yard,
+                        contentDescription = "إضافة فرع",
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "+ فرع",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp
+                        )
+                    )
+                }
+
+                // Tool 3: Add Leaf
+                TextButton(
+                    onClick = {
+                        val randomOffset = Offset((-100..100).random().toFloat(), (-100..100).random().toFloat())
+                        canvasViewModel.addElement(ElementType.LEAF, randomOffset)
+                    },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = Color(0xFF2E7D32)
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Eco,
+                        contentDescription = "إضافة ورقة عائلة",
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "+ ورقة",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp
                         )
                     )
                 }
             }
         }
-    }
-}
 
-/**
- * BlueprintArtCard draws a beautiful modern geometric blueprint preview in Compose.
- * Demonstrates grids, circles, coordinate scales, and designer elements.
- */
-@Composable
-private fun BlueprintArtCard() {
-    val primaryColor = MaterialTheme.colorScheme.primary
-    val secondaryColor = MaterialTheme.colorScheme.secondary
-    val tertiaryColor = MaterialTheme.colorScheme.tertiary
-    val outlineVariant = MaterialTheme.colorScheme.outlineVariant
+        // 5. Floating Coordinates Display (Sticky Bottom Panel)
+        if (panelsVisible) {
+        CoordinatePanel(
+            canvasState = canvasState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding() // Exclude bottom safe navigation overlays
+                .padding(bottom = 24.dp)
+        )
+        }
 
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(240.dp)
-            .padding(vertical = 16.dp)
-            .border(
-                width = 1.dp,
-                color = MaterialTheme.colorScheme.outlineVariant,
-                shape = RoundedCornerShape(24.dp)
-            ),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            // Draw custom design blueprint vector
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                val w = size.width
-                val h = size.height
+        // Smart Layout Engine - Floating Left-side Console
+        if (panelsVisible) {
+        Surface(
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .padding(start = 16.dp)
+                .width(130.dp)
+                .clip(RoundedCornerShape(24.dp))
+                .border(
+                    width = 1.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                    shape = RoundedCornerShape(24.dp)
+                ),
+            tonalElevation = 6.dp,
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+        ) {
+            Column(
+                modifier = Modifier.padding(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Header Label
+                Text(
+                    text = "التنسيق التلقائي",
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp
+                    ),
+                    color = MaterialTheme.colorScheme.primary,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(vertical = 4.dp)
+                )
 
-                // 1. Draw geometric grid background
-                val step = 30.dp.toPx()
-                for (x in 0..(w / step).toInt()) {
-                    drawLine(
-                        color = outlineVariant.copy(alpha = 0.15f),
-                        start = Offset(x * step, 0f),
-                        end = Offset(x * step, h),
-                        strokeWidth = 1f
-                    )
+                Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+
+                // Layout Modes Selector
+                val currentMode = canvasState.selectedLayoutMode
+                val modes = listOf(
+                    Triple("FREE", "حر", Icons.Default.Share),
+                    Triple("VERTICAL", "رأسي", Icons.Default.VerticalAlignTop),
+                    Triple("HORIZONTAL", "أفقي", Icons.Default.VerticalAlignBottom),
+                    Triple("CIRCULAR", "دائري", Icons.Default.Cached)
+                )
+
+                modes.forEach { (modeKey, modeName, icon) ->
+                    val isSelected = currentMode == modeKey
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(38.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable { canvasViewModel.selectLayoutMode(modeKey) },
+                        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
+                        contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                imageVector = icon,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Text(
+                                text = modeName,
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    fontSize = 11.sp
+                                )
+                            )
+                        }
+                    }
                 }
-                for (y in 0..(h / step).toInt()) {
-                    drawLine(
-                        color = outlineVariant.copy(alpha = 0.15f),
-                        start = Offset(0f, y * step),
-                        end = Offset(w, y * step),
-                        strokeWidth = 1f
-                    )
+
+                Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+
+                // Action trigger button!
+                Button(
+                    onClick = { canvasViewModel.triggerAutoLayout() },
+                    modifier = Modifier
+                        .testTag("auto_layout_button")
+                        .fillMaxWidth()
+                        .height(44.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    ),
+                    contentPadding = PaddingValues(horizontal = 4.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.AutoAwesome,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                            tint = Color.White
+                        )
+                        Text(
+                            text = "ترتيب",
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 11.sp
+                            ),
+                            color = Color.White
+                        )
+                    }
                 }
-
-                // 2. Draw coordinate axis lines in card
-                drawLine(
-                    color = primaryColor.copy(alpha = 0.25f),
-                    start = Offset(w / 2f, 0f),
-                    end = Offset(w / 2f, h),
-                    strokeWidth = 2f
-                )
-                drawLine(
-                    color = primaryColor.copy(alpha = 0.25f),
-                    start = Offset(0f, h / 2f),
-                    end = Offset(w, h / 2f),
-                    strokeWidth = 2f
-                )
-
-                // 3. Draw concentric blueprint circles
-                drawCircle(
-                    color = primaryColor.copy(alpha = 0.08f),
-                    radius = 80.dp.toPx(),
-                    center = Offset(w / 2f, h / 2f)
-                )
-                drawCircle(
-                    color = primaryColor.copy(alpha = 0.2f),
-                    radius = 80.dp.toPx(),
-                    center = Offset(w / 2f, h / 2f),
-                    style = Stroke(width = 2f, pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f))
-                )
-                drawCircle(
-                    color = secondaryColor.copy(alpha = 0.3f),
-                    radius = 40.dp.toPx(),
-                    center = Offset(w / 2f, h / 2f),
-                    style = Stroke(width = 1.5f)
-                )
-
-                // 4. Draw interactive node points
-                drawCircle(
-                    color = primaryColor,
-                    radius = 6.dp.toPx(),
-                    center = Offset(w / 2f, h / 2f)
-                )
-                drawCircle(
-                    color = secondaryColor,
-                    radius = 5.dp.toPx(),
-                    center = Offset(w / 2f - 80.dp.toPx(), h / 2f)
-                )
-                drawCircle(
-                    color = tertiaryColor,
-                    radius = 5.dp.toPx(),
-                    center = Offset(w / 2f + 80.dp.toPx(), h / 2f)
-                )
-
-                // 5. Connecting design lines
-                drawLine(
-                    color = secondaryColor.copy(alpha = 0.4f),
-                    start = Offset(w / 2f, h / 2f),
-                    end = Offset(w / 2f - 80.dp.toPx(), h / 2f),
-                    strokeWidth = 1.5f
-                )
-                drawLine(
-                    color = tertiaryColor.copy(alpha = 0.4f),
-                    start = Offset(w / 2f, h / 2f),
-                    end = Offset(w / 2f + 80.dp.toPx(), h / 2f),
-                    strokeWidth = 1.5f
-                )
             }
+        }
+        }
 
-            // Small badge showing "Interactive Viewer"
+        // 6. Professional Properties Sidebar (Phase 5)
+        PropertiesSidebar(
+            canvasState = canvasState,
+            viewModel = canvasViewModel,
+            modifier = Modifier.align(Alignment.CenterEnd)
+        )
+
+        // 7. Error Message Banner (Smart Rules Engine)
+        canvasState.errorMessage?.let { errorMsg ->
             Box(
                 modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(16.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
-                    .border(
-                        width = 1.dp,
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                        shape = RoundedCornerShape(8.dp)
-                    )
-                    .padding(horizontal = 10.dp, vertical = 4.dp)
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(top = 90.dp, start = 24.dp, end = 24.dp)
+                    .align(Alignment.TopCenter)
             ) {
-                Text(
-                    text = "محاكاة الفضاء اللا نهائي",
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 10.sp
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
                     ),
-                    color = MaterialTheme.colorScheme.primary
-                )
+                    shape = RoundedCornerShape(16.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .padding(16.dp)
+                            .fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Warning,
+                                contentDescription = "Error",
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text = errorMsg,
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        }
+                        IconButton(
+                            onClick = { canvasViewModel.clearErrorMessage() },
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Close",
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
+                }
             }
+        }
+
+        // 8. Validation Status Banner (Under top header)
+        if (panelsVisible) {
+        canvasState.validationStatus?.let { status ->
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(top = 90.dp, start = 24.dp, end = 24.dp)
+                    .align(Alignment.TopCenter)
+            ) {
+                if (canvasState.errorMessage == null) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer
+                        ),
+                        shape = RoundedCornerShape(16.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .padding(horizontal = 16.dp, vertical = 12.dp)
+                                .fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CheckCircle,
+                                contentDescription = "Validated",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(
+                                text = status,
+                                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        }
+
+        // Toggle button: shows/hides all floating panels above (small arrow, always visible)
+        IconButton(
+            onClick = { panelsVisible = !panelsVisible },
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .statusBarsPadding()
+                .padding(top = 16.dp, start = 16.dp)
+                .size(36.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
+                .border(
+                    width = 1.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                    shape = RoundedCornerShape(10.dp)
+                )
+        ) {
+            Icon(
+                imageVector = if (panelsVisible) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                contentDescription = if (panelsVisible) "إخفاء اللوحات" else "إظهار اللوحات",
+                tint = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+
+        // 9. Safe Deletion Confirmation Dialog (Trunk)
+        if (canvasState.pendingDeleteTrunkConfirmation) {
+            AlertDialog(
+                onDismissRequest = { canvasViewModel.cancelDeleteTrunk() },
+                confirmButton = {
+                    TextButton(
+                        onClick = { canvasViewModel.deleteSelected(confirmed = true) }
+                    ) {
+                        Text(text = "تأكيد الحذف الكامل", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = { canvasViewModel.cancelDeleteTrunk() }
+                    ) {
+                        Text(text = "إلغاء")
+                    }
+                },
+                icon = {
+                    Icon(
+                        imageVector = Icons.Default.Warning,
+                        contentDescription = "Warning",
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(36.dp)
+                    )
+                },
+                title = {
+                    Text(text = "تأكيد حذف الجذع الرئيسي")
+                },
+                text = {
+                    Text(text = "تحذير هام: حذف الجذع سيؤدي لحذف كافة الفروع والأوراق المرتبطة به. هل أنت متأكد من الحذف؟")
+                },
+                shape = RoundedCornerShape(24.dp)
+            )
         }
     }
 }
