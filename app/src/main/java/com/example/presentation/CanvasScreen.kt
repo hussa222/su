@@ -55,3 +55,630 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.canvas.CanvasBoard
+import com.example.models.ElementType
+import com.example.providers.CanvasViewModel
+import com.example.widgets.CollapsibleSidePanel
+import com.example.widgets.ControlPanel
+import com.example.widgets.CoordinatePanel
+import com.example.widgets.LayersPanel
+import com.example.widgets.PanelEdge
+import com.example.widgets.PropertiesSidebar
+
+/**
+ * CanvasScreen hosts the interactive workspace.
+ * Combines the CanvasBoard, ControlPanel, CoordinatePanel, LayersPanel,
+ * PropertiesSidebar, Floating Creative Tools Bar, and the floating header.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CanvasScreen(
+    onNavigateBack: () -> Unit,
+    modifier: Modifier = Modifier,
+    canvasViewModel: CanvasViewModel = viewModel()
+) {
+    val canvasState by canvasViewModel.state.collectAsState()
+
+    // Track viewport size to center zoom steps
+    var viewportWidth by remember { mutableStateOf(1080f) }
+    var viewportHeight by remember { mutableStateOf(1920f) }
+    var panelsVisible by remember { mutableStateOf(true) }
+
+    // NEW: collapse state for the two side panels (arrows always stay visible)
+    var propsCollapsed by remember { mutableStateOf(true) }
+    var layersCollapsed by remember { mutableStateOf(true) }
+
+    Box(
+        modifier = modifier.fillMaxSize()
+    ) {
+        // 1. The Core Canvas Engine
+        CanvasBoard(
+            viewModel = canvasViewModel,
+            canvasState = canvasState,
+            onSizeChanged = { w, h ->
+                viewportWidth = w
+                viewportHeight = h
+            },
+            modifier = Modifier.fillMaxSize()
+        )
+
+        // 2. Floating Header Bar (Top Bar)
+        if (panelsVisible) {
+        Surface(
+            modifier = Modifier
+                .statusBarsPadding()
+                .fillMaxWidth()
+                .padding(16.dp)
+                .clip(RoundedCornerShape(20.dp))
+                .border(
+                    width = 1.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                    shape = RoundedCornerShape(20.dp)
+                ),
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+            tonalElevation = 4.dp
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Return to main menu (Back Button)
+                IconButton(
+                    onClick = onNavigateBack,
+                    modifier = Modifier
+                        .testTag("canvas_back_button")
+                        .size(48.dp) // Touch target > 48dp
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "الرجوع للرئيسية (Back to Home)",
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                // Workspace title info
+                Box(modifier = Modifier.weight(1f)) {
+                    Column {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFF2E7D32)) // Leaf Green Active Indicator
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "محرر شجرة العائلة الذكي",
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 15.sp
+                                ),
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                        Text(
+                            text = "SMART CONNECTION ENGINE • PHASE 4",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 1.2.sp
+                            ),
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(start = 16.dp, top = 2.dp)
+                        )
+                    }
+                }
+
+                // Inline quick reset action
+                IconButton(
+                    onClick = { canvasViewModel.resetCanvas() },
+                    modifier = Modifier
+                        .testTag("canvas_header_reset_button")
+                        .size(48.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.RestartAlt,
+                        contentDescription = "إعادة التصفير (Reset View)",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+        }
+
+        // 3. Floating Sidebar Control Panel (Vertical scale adjusting + reset)
+        if (panelsVisible) {
+        ControlPanel(
+            onZoomIn = { center -> canvasViewModel.zoomIn(center) },
+            onZoomOut = { center -> canvasViewModel.zoomOut(center) },
+            onReset = { canvasViewModel.resetCanvas() },
+            viewportWidth = viewportWidth,
+            viewportHeight = viewportHeight,
+            scale = canvasState.scale,
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .padding(end = 16.dp)
+        )
+        }
+
+        // 4. Creative Element Toolbox (Floating panel above Coordinates)
+        Surface(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 110.dp) // Position nicely elevated above coordinates
+                .clip(RoundedCornerShape(24.dp))
+                .border(
+                    width = 1.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                    shape = RoundedCornerShape(24.dp)
+                ),
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+            tonalElevation = 6.dp
+        ) {
+            Row(
+                modifier = Modifier
+                    .padding(horizontal = 14.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Multi-select Mode Toggle
+                val isMulti = canvasState.isMultiSelectMode
+                IconButton(
+                    onClick = { canvasViewModel.toggleMultiSelectMode() },
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(
+                            if (isMulti) MaterialTheme.colorScheme.primary else Color.Transparent
+                        )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.SelectAll,
+                        contentDescription = "تحديد متعدد (Multi-Select)",
+                        tint = if (isMulti) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+
+                // Vertical Divider
+                Box(
+                    modifier = Modifier
+                        .size(width = 1.dp, height = 20.dp)
+                        .background(MaterialTheme.colorScheme.outlineVariant)
+                )
+
+                // Tool 1: Add Trunk
+                TextButton(
+                    onClick = {
+                        val randomOffset = Offset((-100..100).random().toFloat(), (-100..100).random().toFloat())
+                        canvasViewModel.addElement(ElementType.TRUNK, randomOffset)
+                    },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = Color(0xFF8B5A2B)
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Forest,
+                        contentDescription = "إضافة جذع عائلة",
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "+ جذع",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp
+                        )
+                    )
+                }
+
+                // Tool 2: Add Branch
+                TextButton(
+                    onClick = {
+                        val randomOffset = Offset((-100..100).random().toFloat(), (-100..100).random().toFloat())
+                        canvasViewModel.addElement(ElementType.BRANCH, randomOffset)
+                    },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = Color(0xFF5D4037)
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Yard,
+                        contentDescription = "إضافة فرع",
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "+ فرع",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp
+                        )
+                    )
+                }
+
+                // Tool 3: Add Leaf
+                TextButton(
+                    onClick = {
+                        val randomOffset = Offset((-100..100).random().toFloat(), (-100..100).random().toFloat())
+                        canvasViewModel.addElement(ElementType.LEAF, randomOffset)
+                    },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = Color(0xFF2E7D32)
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Eco,
+                        contentDescription = "إضافة ورقة عائلة",
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "+ ورقة",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp
+                        )
+                    )
+                }
+            }
+        }
+
+        // 5. Floating Coordinates Display (Sticky Bottom Panel)
+        if (panelsVisible) {
+        CoordinatePanel(
+            canvasState = canvasState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding() // Exclude bottom safe navigation overlays
+                .padding(bottom = 24.dp)
+        )
+        }
+
+        // Smart Layout Engine - Floating Left-side Console
+        if (panelsVisible) {
+        Surface(
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .padding(start = 16.dp)
+                .width(130.dp)
+                .clip(RoundedCornerShape(24.dp))
+                .border(
+                    width = 1.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                    shape = RoundedCornerShape(24.dp)
+                ),
+            tonalElevation = 6.dp,
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+        ) {
+            Column(
+                modifier = Modifier.padding(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Header Label
+                Text(
+                    text = "التنسيق التلقائي",
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp
+                    ),
+                    color = MaterialTheme.colorScheme.primary,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(vertical = 4.dp)
+                )
+
+                Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+
+                // Layout Modes Selector
+                val currentMode = canvasState.selectedLayoutMode
+                val modes = listOf(
+                    Triple("FREE", "حر", Icons.Default.Share),
+                    Triple("VERTICAL", "رأسي", Icons.Default.VerticalAlignTop),
+                    Triple("HORIZONTAL", "أفقي", Icons.Default.VerticalAlignBottom),
+                    Triple("CIRCULAR", "دائري", Icons.Default.Cached)
+                )
+
+                modes.forEach { (modeKey, modeName, icon) ->
+                    val isSelected = currentMode == modeKey
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(38.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable { canvasViewModel.selectLayoutMode(modeKey) },
+                        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
+                        contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                imageVector = icon,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Text(
+                                text = modeName,
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    fontSize = 11.sp
+                                )
+                            )
+                        }
+                    }
+                }
+
+                Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+
+                // Action trigger button!
+                Button(
+                    onClick = { canvasViewModel.triggerAutoLayout() },
+                    modifier = Modifier
+                        .testTag("auto_layout_button")
+                        .fillMaxWidth()
+                        .height(44.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    ),
+                    contentPadding = PaddingValues(horizontal = 4.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.AutoAwesome,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                            tint = Color.White
+                        )
+                        Text(
+                            text = "ترتيب",
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 11.sp
+                            ),
+                            color = Color.White
+                        )
+                    }
+                }
+            }
+        }
+        }
+
+        // 6. Professional Properties Sidebar (Phase 5) — قابلة للطي، سهم دائم على يمين الشاشة
+        CollapsibleSidePanel(
+            isCollapsed = propsCollapsed || canvasState.activePropertiesElementId == null,
+            onToggleCollapsed = { propsCollapsed = !propsCollapsed },
+            edge = PanelEdge.END,
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .fillMaxHeight()
+        ) {
+            PropertiesSidebar(
+                canvasState = canvasState,
+                viewModel = canvasViewModel
+            )
+        }
+
+        // 6.5 Layers Panel — قائمة كل عناصر اللوحة مع تحكم فردي، سهم دائم على يسار الشاشة
+        CollapsibleSidePanel(
+            isCollapsed = layersCollapsed,
+            onToggleCollapsed = { layersCollapsed = !layersCollapsed },
+            edge = PanelEdge.START,
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .fillMaxHeight()
+        ) {
+            LayersPanel(
+                canvasState = canvasState,
+                viewModel = canvasViewModel
+            )
+        }
+
+        // زر منفصل صغير يفتح/يطوي لوحة الطبقات بشكل صريح (فوق يسار الشاشة تحت زر panelsVisible)
+        IconButton(
+            onClick = { layersCollapsed = !layersCollapsed },
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .statusBarsPadding()
+                .padding(top = 62.dp, start = 16.dp)
+                .size(36.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
+                .border(
+                    width = 1.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                    shape = RoundedCornerShape(10.dp)
+                )
+        ) {
+            Icon(
+                imageVector = Icons.Default.Layers,
+                contentDescription = "إظهار/إخفاء الطبقات",
+                tint = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.size(18.dp)
+            )
+        }
+
+        // 7. Error Message Banner (Smart Rules Engine)
+        canvasState.errorMessage?.let { errorMsg ->
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(top = 90.dp, start = 24.dp, end = 24.dp)
+                    .align(Alignment.TopCenter)
+            ) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    ),
+                    shape = RoundedCornerShape(16.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .padding(16.dp)
+                            .fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Warning,
+                                contentDescription = "Error",
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text = errorMsg,
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        }
+                        IconButton(
+                            onClick = { canvasViewModel.clearErrorMessage() },
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Close",
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // 8. Validation Status Banner (Under top header)
+        if (panelsVisible) {
+        canvasState.validationStatus?.let { status ->
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(top = 90.dp, start = 24.dp, end = 24.dp)
+                    .align(Alignment.TopCenter)
+            ) {
+                if (canvasState.errorMessage == null) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer
+                        ),
+                        shape = RoundedCornerShape(16.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .padding(horizontal = 16.dp, vertical = 12.dp)
+                                .fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CheckCircle,
+                                contentDescription = "Validated",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(
+                                text = status,
+                                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        }
+
+        // Toggle button: shows/hides all floating panels above (small arrow, always visible)
+        IconButton(
+            onClick = { panelsVisible = !panelsVisible },
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .statusBarsPadding()
+                .padding(top = 16.dp, start = 16.dp)
+                .size(36.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
+                .border(
+                    width = 1.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                    shape = RoundedCornerShape(10.dp)
+                )
+        ) {
+            Icon(
+                imageVector = if (panelsVisible) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                contentDescription = if (panelsVisible) "إخفاء اللوحات" else "إظهار اللوحات",
+                tint = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+
+        // 9. Safe Deletion Confirmation Dialog (Trunk)
+        if (canvasState.pendingDeleteTrunkConfirmation) {
+            AlertDialog(
+                onDismissRequest = { canvasViewModel.cancelDeleteTrunk() },
+                confirmButton = {
+                    TextButton(
+                        onClick = { canvasViewModel.deleteSelected(confirmed = true) }
+                    ) {
+                        Text(text = "تأكيد الحذف الكامل", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = { canvasViewModel.cancelDeleteTrunk() }
+                    ) {
+                        Text(text = "إلغاء")
+                    }
+                },
+                icon = {
+                    Icon(
+                        imageVector = Icons.Default.Warning,
+                        contentDescription = "Warning",
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(36.dp)
+                    )
+                },
+                title = {
+                    Text(text = "تأكيد حذف الجذع الرئيسي")
+                },
+                text = {
+                    Text(text = "تحذير هام: حذف الجذع سيؤدي لحذف كافة الفروع والأوراق المرتبطة به. هل أنت متأكد من الحذف؟")
+                },
+                shape = RoundedCornerShape(24.dp)
+            )
+        }
+    }
+}
