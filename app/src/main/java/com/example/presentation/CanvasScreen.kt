@@ -1,627 +1,131 @@
-package com.example.presentation
+package com.example.models
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Eco
-import androidx.compose.material.icons.filled.Forest
-import androidx.compose.material.icons.filled.RestartAlt
-import androidx.compose.material.icons.filled.SelectAll
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material.icons.filled.Yard
-import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Cached
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.VerticalAlignBottom
-import androidx.compose.material.icons.filled.VerticalAlignTop
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.material3.Button
-import androidx.compose.material3.Divider
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.canvas.CanvasBoard
-import com.example.models.ElementType
-import com.example.providers.CanvasViewModel
-import com.example.widgets.ControlPanel
-import com.example.widgets.CoordinatePanel
-import com.example.widgets.PropertiesSidebar
 
 /**
- * CanvasScreen hosts the interactive workspace.
- * Combines the CanvasBoard, ControlPanel, CoordinatePanel, Floating Creative Tools Bar, and the floating header.
+ * Types of elements that can be placed on the canvas for the Family Tree.
  */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun CanvasScreen(
-    onNavigateBack: () -> Unit,
-    modifier: Modifier = Modifier,
-    canvasViewModel: CanvasViewModel = viewModel()
-) {
-    val canvasState by canvasViewModel.state.collectAsState()
-
-    // Track viewport size to center zoom steps
-    var viewportWidth by remember { mutableStateOf(1080f) }
-    var viewportHeight by remember { mutableStateOf(1920f) }
-    var panelsVisible by remember { mutableStateOf(true) }
-
-    Box(
-        modifier = modifier.fillMaxSize()
-    ) {
-        // 1. The Core Canvas Engine
-        CanvasBoard(
-            viewModel = canvasViewModel,
-            canvasState = canvasState,
-            onSizeChanged = { w, h ->
-                viewportWidth = w
-                viewportHeight = h
-            },
-            modifier = Modifier.fillMaxSize()
-        )
-
-        // 2. Floating Header Bar (Top Bar)
-        if (panelsVisible) {
-        Surface(
-            modifier = Modifier
-                .statusBarsPadding()
-                .fillMaxWidth()
-                .padding(16.dp)
-                .clip(RoundedCornerShape(20.dp))
-                .border(
-                    width = 1.dp,
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
-                    shape = RoundedCornerShape(20.dp)
-                ),
-            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
-            tonalElevation = 4.dp
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Return to main menu (Back Button)
-                IconButton(
-                    onClick = onNavigateBack,
-                    modifier = Modifier
-                        .testTag("canvas_back_button")
-                        .size(48.dp) // Touch target > 48dp
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "الرجوع للرئيسية (Back to Home)",
-                        tint = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                // Workspace title info
-                Box(modifier = Modifier.weight(1f)) {
-                    Column {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier
-                                    .size(8.dp)
-                                    .clip(CircleShape)
-                                    .background(Color(0xFF2E7D32)) // Leaf Green Active Indicator
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "محرر شجرة العائلة الذكي",
-                                style = MaterialTheme.typography.titleMedium.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 15.sp
-                                ),
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                        Text(
-                            text = "SMART CONNECTION ENGINE • PHASE 4",
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                fontSize = 9.sp,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 1.2.sp
-                            ),
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(start = 16.dp, top = 2.dp)
-                        )
-                    }
-                }
-
-                // Inline quick reset action
-                IconButton(
-                    onClick = { canvasViewModel.resetCanvas() },
-                    modifier = Modifier
-                        .testTag("canvas_header_reset_button")
-                        .size(48.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.RestartAlt,
-                        contentDescription = "إعادة التصفير (Reset View)",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        }
-        }
-
-        // 3. Floating Sidebar Control Panel (Vertical scale adjusting + reset)
-        if (panelsVisible) {
-        ControlPanel(
-            onZoomIn = { center -> canvasViewModel.zoomIn(center) },
-            onZoomOut = { center -> canvasViewModel.zoomOut(center) },
-            onReset = { canvasViewModel.resetCanvas() },
-            viewportWidth = viewportWidth,
-            viewportHeight = viewportHeight,
-            scale = canvasState.scale,
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .padding(end = 16.dp)
-        )
-        }
-
-        // 4. Creative Element Toolbox (Floating panel above Coordinates)
-        Surface(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 110.dp) // Position nicely elevated above coordinates
-                .clip(RoundedCornerShape(24.dp))
-                .border(
-                    width = 1.dp,
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                    shape = RoundedCornerShape(24.dp)
-                ),
-            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
-            tonalElevation = 6.dp
-        ) {
-            Row(
-                modifier = Modifier
-                    .padding(horizontal = 14.dp, vertical = 6.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Multi-select Mode Toggle
-                val isMulti = canvasState.isMultiSelectMode
-                IconButton(
-                    onClick = { canvasViewModel.toggleMultiSelectMode() },
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .background(
-                            if (isMulti) MaterialTheme.colorScheme.primary else Color.Transparent
-                        )
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.SelectAll,
-                        contentDescription = "تحديد متعدد (Multi-Select)",
-                        tint = if (isMulti) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-
-                // Vertical Divider
-                Box(
-                    modifier = Modifier
-                        .size(width = 1.dp, height = 20.dp)
-                        .background(MaterialTheme.colorScheme.outlineVariant)
-                )
-
-                // Tool 1: Add Trunk
-                TextButton(
-                    onClick = {
-                        val randomOffset = Offset((-100..100).random().toFloat(), (-100..100).random().toFloat())
-                        canvasViewModel.addElement(ElementType.TRUNK, randomOffset)
-                    },
-                    colors = ButtonDefaults.textButtonColors(
-                        contentColor = Color(0xFF8B5A2B)
-                    )
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Forest,
-                        contentDescription = "إضافة جذع عائلة",
-                        modifier = Modifier.size(14.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = "+ جذع",
-                        style = MaterialTheme.typography.labelMedium.copy(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 11.sp
-                        )
-                    )
-                }
-
-                // Tool 2: Add Branch
-                TextButton(
-                    onClick = {
-                        val randomOffset = Offset((-100..100).random().toFloat(), (-100..100).random().toFloat())
-                        canvasViewModel.addElement(ElementType.BRANCH, randomOffset)
-                    },
-                    colors = ButtonDefaults.textButtonColors(
-                        contentColor = Color(0xFF5D4037)
-                    )
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Yard,
-                        contentDescription = "إضافة فرع",
-                        modifier = Modifier.size(14.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = "+ فرع",
-                        style = MaterialTheme.typography.labelMedium.copy(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 11.sp
-                        )
-                    )
-                }
-
-                // Tool 3: Add Leaf
-                TextButton(
-                    onClick = {
-                        val randomOffset = Offset((-100..100).random().toFloat(), (-100..100).random().toFloat())
-                        canvasViewModel.addElement(ElementType.LEAF, randomOffset)
-                    },
-                    colors = ButtonDefaults.textButtonColors(
-                        contentColor = Color(0xFF2E7D32)
-                    )
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Eco,
-                        contentDescription = "إضافة ورقة عائلة",
-                        modifier = Modifier.size(14.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = "+ ورقة",
-                        style = MaterialTheme.typography.labelMedium.copy(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 11.sp
-                        )
-                    )
-                }
-            }
-        }
-
-        // 5. Floating Coordinates Display (Sticky Bottom Panel)
-        if (panelsVisible) {
-        CoordinatePanel(
-            canvasState = canvasState,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .navigationBarsPadding() // Exclude bottom safe navigation overlays
-                .padding(bottom = 24.dp)
-        )
-        }
-
-        // Smart Layout Engine - Floating Left-side Console
-        if (panelsVisible) {
-        Surface(
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .padding(start = 16.dp)
-                .width(130.dp)
-                .clip(RoundedCornerShape(24.dp))
-                .border(
-                    width = 1.dp,
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                    shape = RoundedCornerShape(24.dp)
-                ),
-            tonalElevation = 6.dp,
-            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
-        ) {
-            Column(
-                modifier = Modifier.padding(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                // Header Label
-                Text(
-                    text = "التنسيق التلقائي",
-                    style = MaterialTheme.typography.labelMedium.copy(
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp
-                    ),
-                    color = MaterialTheme.colorScheme.primary,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(vertical = 4.dp)
-                )
-
-                Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
-
-                // Layout Modes Selector
-                val currentMode = canvasState.selectedLayoutMode
-                val modes = listOf(
-                    Triple("FREE", "حر", Icons.Default.Share),
-                    Triple("VERTICAL", "رأسي", Icons.Default.VerticalAlignTop),
-                    Triple("HORIZONTAL", "أفقي", Icons.Default.VerticalAlignBottom),
-                    Triple("CIRCULAR", "دائري", Icons.Default.Cached)
-                )
-
-                modes.forEach { (modeKey, modeName, icon) ->
-                    val isSelected = currentMode == modeKey
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(38.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .clickable { canvasViewModel.selectLayoutMode(modeKey) },
-                        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
-                        contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Icon(
-                                imageVector = icon,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Text(
-                                text = modeName,
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                    fontSize = 11.sp
-                                )
-                            )
-                        }
-                    }
-                }
-
-                Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
-
-                // Action trigger button!
-                Button(
-                    onClick = { canvasViewModel.triggerAutoLayout() },
-                    modifier = Modifier
-                        .testTag("auto_layout_button")
-                        .fillMaxWidth()
-                        .height(44.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary
-                    ),
-                    contentPadding = PaddingValues(horizontal = 4.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.AutoAwesome,
-                            contentDescription = null,
-                            modifier = Modifier.size(14.dp),
-                            tint = Color.White
-                        )
-                        Text(
-                            text = "ترتيب",
-                            style = MaterialTheme.typography.labelMedium.copy(
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 11.sp
-                            ),
-                            color = Color.White
-                        )
-                    }
-                }
-            }
-        }
-        }
-
-        // 6. Professional Properties Sidebar (Phase 5)
-        PropertiesSidebar(
-            canvasState = canvasState,
-            viewModel = canvasViewModel,
-            modifier = Modifier.align(Alignment.CenterEnd)
-        )
-
-        // 7. Error Message Banner (Smart Rules Engine)
-        canvasState.errorMessage?.let { errorMsg ->
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .statusBarsPadding()
-                    .padding(top = 90.dp, start = 24.dp, end = 24.dp)
-                    .align(Alignment.TopCenter)
-            ) {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer
-                    ),
-                    shape = RoundedCornerShape(16.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .padding(16.dp)
-                            .fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Warning,
-                                contentDescription = "Error",
-                                tint = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text(
-                                text = errorMsg,
-                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                                color = MaterialTheme.colorScheme.onErrorContainer
-                            )
-                        }
-                        IconButton(
-                            onClick = { canvasViewModel.clearErrorMessage() },
-                            modifier = Modifier.size(36.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Close",
-                                tint = MaterialTheme.colorScheme.error
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        // 8. Validation Status Banner (Under top header)
-        if (panelsVisible) {
-        canvasState.validationStatus?.let { status ->
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .statusBarsPadding()
-                    .padding(top = 90.dp, start = 24.dp, end = 24.dp)
-                    .align(Alignment.TopCenter)
-            ) {
-                if (canvasState.errorMessage == null) {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer
-                        ),
-                        shape = RoundedCornerShape(16.dp),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .padding(horizontal = 16.dp, vertical = 12.dp)
-                                .fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.CheckCircle,
-                                contentDescription = "Validated",
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Text(
-                                text = status,
-                                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
-                                color = MaterialTheme.colorScheme.onSecondaryContainer
-                            )
-                        }
-                    }
-                }
-            }
-        }
-        }
-
-        // Toggle button: shows/hides all floating panels above (small arrow, always visible)
-        IconButton(
-            onClick = { panelsVisible = !panelsVisible },
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .statusBarsPadding()
-                .padding(top = 16.dp, start = 16.dp)
-                .size(36.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.9f))
-                .border(
-                    width = 1.dp,
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
-                    shape = RoundedCornerShape(10.dp)
-                )
-        ) {
-            Icon(
-                imageVector = if (panelsVisible) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                contentDescription = if (panelsVisible) "إخفاء اللوحات" else "إظهار اللوحات",
-                tint = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.size(20.dp)
-            )
-        }
-
-        // 9. Safe Deletion Confirmation Dialog (Trunk)
-        if (canvasState.pendingDeleteTrunkConfirmation) {
-            AlertDialog(
-                onDismissRequest = { canvasViewModel.cancelDeleteTrunk() },
-                confirmButton = {
-                    TextButton(
-                        onClick = { canvasViewModel.deleteSelected(confirmed = true) }
-                    ) {
-                        Text(text = "تأكيد الحذف الكامل", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
-                    }
-                },
-                dismissButton = {
-                    TextButton(
-                        onClick = { canvasViewModel.cancelDeleteTrunk() }
-                    ) {
-                        Text(text = "إلغاء")
-                    }
-                },
-                icon = {
-                    Icon(
-                        imageVector = Icons.Default.Warning,
-                        contentDescription = "Warning",
-                        tint = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.size(36.dp)
-                    )
-                },
-                title = {
-                    Text(text = "تأكيد حذف الجذع الرئيسي")
-                },
-                text = {
-                    Text(text = "تحذير هام: حذف الجذع سيؤدي لحذف كافة الفروع والأوراق المرتبطة به. هل أنت متأكد من الحذف؟")
-                },
-                shape = RoundedCornerShape(24.dp)
-            )
-        }
-    }
+enum class ElementType {
+    TRUNK,     // الجذع
+    BRANCH,    // الفرع
+    LEAF       // الورقة
 }
+
+/**
+ * Strength of the automatic overlap-prevention system.
+ * STRONG: elements are pushed apart the instant their bounding boxes touch (original behavior).
+ * LIGHT: elements are allowed to overlap partially before being pushed apart.
+ * OFF: overlap prevention is disabled entirely; elements can overlap freely.
+ */
+enum class OverlapMode {
+    OFF,
+    LIGHT,
+    STRONG
+}
+
+/**
+ * Represents a design element in canvas-space.
+ * Positions are defined in canvas-space DP coordinates.
+ */
+data class CanvasElement(
+    val id: String,
+    val type: ElementType,
+    val title: String,
+    val position: Offset,         // Center position in canvas-space DP
+    val width: Float,              // Width in DP
+    val height: Float,             // Height in DP
+    val extraData: String = "",
+    val colorHex: String = "#8B5A2B", // Default wood brown
+    
+    // Phase 4: Family Tree Relations
+    val parentId: String? = null,
+    val parentAnchorId: String? = null, // The anchor ID on the parent element this is connected to
+    val relativeOffset: Offset = Offset.Zero, // Position relative to parent's center when snapped
+
+    // Phase 5: Transform Properties
+    val rotation: Float = 0f,              // Rotation angle in degrees (0 to 360)
+    val curvature: Float = 0f,             // Curvature sweep (-100 to 100)
+    val thickness: Float = 8f,             // Core thickness of the trunk/branch lines in DP
+    val opacity: Float = 1.0f,             // Element opacity (0.0 to 1.0)
+    val borderColorHex: String = "#FFFFFF",// Border color in hex
+    val borderThickness: Float = 2.0f,     // Border thickness in DP
+    val hasShadow: Boolean = true,         // Enable shadow
+    val shadowElevation: Float = 4.0f,     // Shadow elevation in DP
+    val scale: Float = 1.0f,               // Scaling factor
+    val locked: Boolean = false,           // Lock element from movement
+    val visible: Boolean = true,           // Visibility toggle
+    val selected: Boolean = false,         // Selection toggle state
+    val layerIndex: Int = 0,               // Render layer ordering index
+    val childrenIds: List<String> = emptyList(), // Connected child element IDs
+
+    // Text & Style Properties
+    val fontSize: Float = 12f,
+    val fontColorHex: String = "#FFFFFF",
+    val fontFamily: String = "SANS_SERIF", // SANS_SERIF, SERIF, MONOSPACE, DEFAULT
+    val alignment: String = "Center",      // Left, Center, Right
+    
+    // Trunk specific: supports up to 10 names
+    val trunkNames: List<String> = emptyList(),
+    val trunkItemSpacing: Float = 6f,      // Spacing between names in DP
+
+    // Branch specific: Circle head (دائرة رأس الفرع) settings
+    val branchCircleDiameter: Float = 36f,
+    val branchCircleColorHex: String = "#81C784",
+    val branchCircleBorderColorHex: String = "#FFFFFF",
+    val branchCircleBorderThickness: Float = 1.5f,
+    val branchCircleTextColorHex: String = "#FFFFFF",
+    val branchCircleTextSize: Float = 10f,
+    val branchCircleFontFamily: String = "SANS_SERIF",
+
+    // Leaf specific: text position inside the leaf
+    val leafTextPosition: String = "Center" // Center, Top, Bottom, Left, Right
+)
+
+/**
+ * Represents a highlighted connection snapping target during drag.
+ */
+data class SnapTarget(
+    val parentId: String,
+    val anchorId: String,
+    val absolutePos: Offset // Absolute position of the parent's anchor in canvas-space DP
+)
+
+/**
+ * Represents the state of the drawing canvas.
+ * Includes zoom scale, panning offset, touch interaction, and coordinate tracking.
+ */
+data class CanvasState(
+    val scale: Float = 1.0f,
+    val offset: Offset = Offset.Zero,
+    val activeTouches: Int = 0,
+    val touchPositionScreen: Offset = Offset.Zero,
+    val touchPositionCanvas: Offset = Offset.Zero,
+    val isInteracting: Boolean = false,
+    
+    // Phase 3 & 4: Interactive Elements State
+    val elements: List<CanvasElement> = emptyList(),
+    val selectedElementIds: Set<String> = emptySet(),
+    val isMultiSelectMode: Boolean = false,
+    val draggedElementId: String? = null,
+    
+    // Active connection snapping target during drag
+    val activeSnapTarget: SnapTarget? = null,
+
+    // Phase 5 Properties Sidebar
+    val activePropertiesElementId: String? = null, // ID of the element whose properties are open in sidebar
+    
+    // Phase 6 Undo / Redo Reactive States
+    val canUndo: Boolean = false,
+    val canRedo: Boolean = false,
+
+    // Phase 8: Smart Rules Engine
+    val errorMessage: String? = null,
+    val pendingDeleteTrunkConfirmation: Boolean = false,
+    val validationStatus: String? = null,
+
+    // Phase 9: Smart Layout Engine
+    val selectedLayoutMode: String = "FREE", // FREE, VERTICAL, HORIZONTAL, CIRCULAR
+
+    // Phase 10: Adjustable Overlap Prevention Strength
+    val overlapMode: OverlapMode = OverlapMode.LIGHT
+)
